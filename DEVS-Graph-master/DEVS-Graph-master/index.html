@@ -26,6 +26,7 @@
       <script src="https://unpkg.com/gojs/release/go.js"></script>
       <script type="module" src="./app.js"></script>
       <script type="module" src="./transform.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
 
       <div style="float: right">
         <div>
@@ -33,6 +34,9 @@
           
           <button id="loadPopup" data-modal="modal-info">Upload</button>
           <button id="downloadPopup" data-modal="file-info">Download Code</button>
+          <button id="loadGraphTab">Graph Visualization</button>
+          <button id="compilePopup"data-modal="compile-info">Compile Code</button>
+
         </div>
         <textarea id="mySavedModel" style="width: 100%; height: 300px; display: none;">
                 { "class": "go.GraphLinksModel",
@@ -87,5 +91,18 @@
         <a class="modal-close modal-exit">X</a>
       </div>
     </div>
+    <div class="modal" id="compile-info">
+      <div class="modal-bg modal-exit"></div>
+      <div class="modal-container">
+          <h4 style="color: blue">Parameters for Compilation</h4>
+          <label for="fileUpload">Upload your input (.txt) file here:</label>
+          <input type="file" id="fileUpload">
+          <label for="numberInput">Input number:</label>
+          <input type="number" id="numberInput">
+          <button id="compileButton">Compile</button>
+          <a class="modal-close modal-exit">X</a>
+      </div>
+  </div>
+  
   </body>
 </html>

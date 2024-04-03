@@ -1,5 +1,8 @@
 let myDiagram;
 let myPalette;
+let globalModel;
+let selectedModel;
+let newTab;
 function init() {
   const $ = go.GraphObject.make; // for conciseness in defining templates
 
@@ -453,7 +456,7 @@ function init() {
         go.Panel,
         "Auto",
         // new go.Binding("visible", "text==''").ofObject(),
-        new go.Binding("visible", "label", function(t) { return !!t; }),
+        new go.Binding("visible", "label", function (t) { return !!t; }),
         $(
           go.Shape,
           "RoundedRectangle", // the link shape
@@ -472,7 +475,7 @@ function init() {
             segmentFraction: 0.5,
           },
           new go.Binding("text", "label").makeTwoWay(),
-          new go.Binding("visible", "label", function(t) { return !!t; }),
+          new go.Binding("visible", "label", function (t) { return !!t; }),
           BindSelection("stroke", "black", "black"),
           BindSelection("background", null, null)
         )
@@ -517,6 +520,16 @@ function init() {
     }
     grp.isHighlighted = false;
   }
+
+  function openGraphVisualization() {
+    //assuming graph.html and index.js are in the same folder as this app.js file
+    newTab = window.open("graph.html");
+    return newTab;
+  }
+
+
+  // Attach event listener to your button
+  document.getElementById("loadGraphTab").addEventListener("click", openGraphVisualization);
 
   // Upon a drop onto a Group, we try to add the selection as members of the Group.
   // Upon a drop onto the background, or onto a top-level Node, make selection top-level.
@@ -563,7 +576,7 @@ function init() {
                 new go.Binding("stroke", "color")
               ),
               $(go.Shape,
-                { toLinkable: true,fromLinkable:true, strokeWidth: 0, width: 8, height: 8 },
+                { toLinkable: true, fromLinkable: true, strokeWidth: 0, width: 8, height: 8 },
                 new go.Binding("portId", "id")),
 
             )
@@ -632,6 +645,9 @@ function init() {
           shiftNodes(grp);
         },
         selectionChanged: function (grp) {
+          selectedModel = grp.ub.text;
+          newTab.postMessage(selectedModel, '*');
+          localStorage.setItem('selectedModel', JSON.stringify(selectedModel));
           grp.diagram.commit(function (diag) {
             var lay = grp.isSelected ? "Foreground" : "";
             grp.layerName = lay;
@@ -806,6 +822,61 @@ function downloadModel() {
   var blob = new Blob([myDiagram.model.toJson()],
     { type: "application/json;charset=utf-8" });
   saveAs(blob, "model.json");
+  //this implementation below sends the model to the visualization app
+  globalModel = myDiagram.model.toJson();
+  globalModel = JSON.parse(globalModel);
+  processHierarchy(globalModel);
+}
+
+function buildHierarchies(nodeDataArray) {
+  const nodesByKey = {};
+  const topLevels = {};
+
+
+  nodeDataArray.forEach(node => {
+    nodesByKey[node.key] = { ...node, children: [] };
+    if (node.group === undefined) {
+      topLevels[node.key] = nodesByKey[node.key];
+    }
+
+  });
+
+
+  //Hierarchy for each node
+  nodeDataArray.forEach(node => {
+    if (node.group !== undefined && nodesByKey[node.group]) {
+      nodesByKey[node.group].children.push(node);
+    }
+  });
+
+
+  const hierarchies = {};
+  for (const key in topLevels) {
+    const node = topLevels[key];
+    hierarchies[node.text] = convertToReadableFormat(node, nodesByKey);
+  }
+  return hierarchies;
+}
+
+
+function convertToReadableFormat(node, nodesByKey) {
+  const result = {};
+  node.children.forEach(child => {
+    if (child.isGroup) {
+      result[child.text] = convertToReadableFormat(nodesByKey[child.key], nodesByKey);
+    } else {
+      result[child.text] = null;
+    }
+  });
+
+
+  return result;
+}
+
+function processHierarchy(model) {
+  //hierarchies sent to new visualization application locally
+  const hierarchies = buildHierarchies(model.nodeDataArray);
+  localStorage.setItem('globalModel', JSON.stringify(hierarchies));
 }
 function load() {
   let file = document.getElementById("formFile").files[0];
@@ -823,9 +894,9 @@ function load() {
       document.getElementById("mySavedModel").value
     );
   }
-  
+
   loadDiagramProperties(); // do this after the Model.modelData has been brought into memory
-  
+
 }
 
 function saveDiagramProperties() {

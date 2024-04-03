@@ -1,12 +1,25 @@
 import { save } from './app.js';
+let fileGlobal, numberGlobal;
+//implementaton for running executable after compiling, with parameters (input text file and number parameter)
+const fileInput = document.getElementById('fileUpload');
+fileInput.addEventListener('change', function () {
+    const file = fileInput.files[0]; 
+    fileGlobal = file;
+});
+
+const numberInput = document.getElementById('numberInput');
+numberInput.addEventListener('input', function () {
+    numberGlobal = this.value;
+});
+
 
 let downloadButton = document.getElementById("downloadButton");
 downloadButton.addEventListener("click", generate);
+let compileButton = document.getElementById("compileButton");
+compileButton.addEventListener("click", compile);
 function generate() {
-    
     let data = transformData(save());
-    console.log(data);
-    fetch('http://127.0.0.1:5000/', {
+    fetch('http://127.0.0.1:5000', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -17,6 +30,45 @@ function generate() {
     }).then((blob) => {
         saveAs(blob, document.getElementById("modalname").value + ".zip")
     }).catch((e) => console.log(e));
+}
+
+//compile process
+function compile() {
+    event.preventDefault();
+    let data = transformData(save());
+    fetch('http://127.0.0.1:5000', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    }).then((res) => res.blob())
+        .then((blob) => {
+            let formData = new FormData();
+            formData.append('file1', blob, 'cppfiles'); 
+            formData.append('numberInput', numberGlobal);
+            formData.append('file2', fileGlobal); 
+
+            //new nodejs end point (Server.js found in new visualization app github) that will compile and make everything from c++ code
+            fetch('http://localhost:2345/compile', {
+                method: 'POST',
+                body: formData,
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok.');
+                    }
+                    return response.text();
+                })
+                .then(text => {
+                    console.log("Response:", text);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+
+        })
+        .catch((e) => console.log(e));
 }
 
 function transformData(data) {
