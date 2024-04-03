@@ -173,19 +173,19 @@ def parseData(data:str):
         coupledMap["_COUPLED_MODELS_DEFS_"] += modelDefs
     
     ###############################################
-    if not os.path.exists("output"):
-        os.makedirs("output")   
+    if not os.path.exists("src"):
+        os.makedirs("src")   
 
     for key in a:
-        f = open("output/main.cpp", "w")
+        f = open("src/main.cpp", "w")
         f.write(replaceTokens(mainTemplate.read(), coupledMap))
         
     for a in atomics:
         for key in a:
-            f = open("output/{0}.h".format(key), "w")
+            f = open("src/{0}.h".format(key), "w")
             f.write(a[key])
     
-    zip_folder("output", "output.zip")
+    zip_folder("src", "src.zip")
 
 
 data = open("example_data.txt","r").read()
@@ -197,8 +197,19 @@ print(parseData(json.loads(data)))
 def root():
     print(request.data)
     parseData(json.loads(request.data))
-    
-    return send_from_directory("./", "output.zip")
+    folder_name = 'src'
+
+    directory = os.path.join(app.root_path, folder_name)
+    if not os.path.exists(directory):
+        return "Folder not found", 404
+
+    zip_filename = f"{folder_name}.zip"
+    with zipfile.ZipFile(zip_filename, 'w') as zipf:
+        for root, dirs, files in os.walk(directory):
+            for file in files:
+                zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(directory, '..')))
+
+    return send_from_directory(app.root_path, zip_filename, as_attachment=True)
 
 if __name__ == '__main__':
     app.run()
